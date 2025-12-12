@@ -1,0 +1,42 @@
+# 示例音乐文件说明
+
+如果你没有圣诞音乐文件，可以从以下地方获取：
+
+## 免费音乐资源
+
+1. **YouTube Audio Library** - 免费无版权音乐
+   - https://studio.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ/music
+
+2. **Free Music Archive** - 免费音乐存档
+   - https://freemusicarchive.org/
+
+3. **Incompetech** - Kevin MacLeod的免费音乐
+   - https://incompetech.com/
+
+4. **Bensound** - 免费商业音乐
+   - https://www.bensound.com/
+
+## 推荐的圣诞音乐
+
+- Jingle Bells
+- Silent Night
+- We Wish You a Merry Christmas
+- Deck the Halls
+- O Holy Night
+- Joy to the World
+
+## 格式要求
+
+- 格式: MP3
+- 比特率: 128-256 kbps (推荐)
+- 长度: 建议3-5分钟，循环播放效果最佳
+
+## 下载示例音乐
+
+你可以从互联网上搜索免费的圣诞音乐，或者使用以下命令下载一个示例文件（需要安装wget）：
+
+```bash
+wget -O public/audio/christmas-music.mp3 https://example.com/christmas-music.mp3
+```
+
+请确保你拥有所使用音乐的合法版权，或使用公共领域的音乐资源。
