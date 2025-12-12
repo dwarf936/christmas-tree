@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import { MathUtils } from 'three';
 import * as random from 'maath/random';
 import { GestureRecognizer, FilesetResolver, DrawingUtils } from "@mediapipe/tasks-vision";
+import MusicPlayer from './components/MusicPlayer';
 
 // --- 动态生成照片列表 (top.jpg + 1.jpg 到 31.jpg) ---
 const TOTAL_NUMBERED_PHOTOS = 31;
@@ -518,6 +519,7 @@ export default function GrandTreeApp() {
         </Canvas>
       </div>
       <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onStatus={setAiStatus} debugMode={debugMode} />
+      <MusicPlayer audioSrc="/audio/christmas-music.mp3" autoPlay loop />
 
       {/* UI - Stats */}
       <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
