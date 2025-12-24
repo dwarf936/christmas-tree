@@ -509,6 +509,106 @@ export default function GrandTreeApp() {
   const [rotationSpeed, setRotationSpeed] = useState(0);
   const [aiStatus, setAiStatus] = useState("INITIALIZING...");
   const [debugMode, setDebugMode] = useState(false);
+  
+  // 音乐播放器状态管理
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.7);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [audioError, setAudioError] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // 初始化音频播放器
+  useEffect(() => {
+    const audio = new Audio('/christmas-music.mp3');
+    audioRef.current = audio;
+    audio.volume = volume;
+    audio.loop = true;
+    
+    // 监听音频事件
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+    });
+    
+    audio.addEventListener('timeupdate', () => {
+      setCurrentTime(audio.currentTime);
+    });
+    
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.error('音频加载失败:', e);
+      setAudioError(true);
+    });
+    
+    // 监听音频加载成功事件
+    audio.addEventListener('loadeddata', () => {
+      console.log('音频加载成功');
+      setAudioError(false);
+    });
+    
+    audio.addEventListener('canplaythrough', () => {
+      console.log('音频可以流畅播放');
+      setAudioError(false);
+    });
+    
+    // 尝试自动播放
+    const autoPlay = async () => {
+      try {
+        await audio.play();
+        setIsPlaying(true);
+        setAudioError(false); // 自动播放成功时重置错误状态
+      } catch (err) {
+        console.error('自动播放失败:', err);
+        setAudioError(true);
+      }
+    };
+    
+    autoPlay();
+    
+    return () => {
+      audio.pause();
+      audio.remove();
+    };
+  }, []);
+  
+  // 音量变化时更新音频
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+  
+  // 播放/暂停
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+          setAudioError(false); // 手动播放成功时重置错误状态
+        })
+        .catch(err => {
+          console.error('播放失败:', err);
+          setAudioError(true);
+        });
+    }
+  };
+  
+  // 更新进度
+  const seek = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
 
   return (
     <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', position: 'relative', overflow: 'hidden' }}>
@@ -549,6 +649,187 @@ export default function GrandTreeApp() {
       <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
         {aiStatus}
       </div>
+      
+      {/* UI - Music Player Control Panel */}
+      {!audioError && (
+        <div style={{ 
+          position: 'absolute', 
+          bottom: isPanelOpen ? '100px' : '30px', 
+          right: '40px', 
+          zIndex: 10, 
+          background: 'rgba(0, 0, 0, 0.7)', 
+          border: '1px solid rgba(255, 215, 0, 0.3)', 
+          borderRadius: '12px', 
+          padding: isPanelOpen ? '15px' : '0', 
+          backdropFilter: 'blur(8px)', 
+          transition: 'all 0.3s ease',
+          minWidth: isPanelOpen ? '300px' : '40px',
+          maxWidth: '400px',
+          overflow: 'hidden',
+          // 响应式设计
+          '@media (max-width: 768px)': {
+            bottom: isPanelOpen ? '120px' : '20px',
+            right: '20px',
+            minWidth: isPanelOpen ? '250px' : '35px',
+            maxWidth: '300px',
+            padding: isPanelOpen ? '10px' : '0'
+          },
+          '@media (max-width: 480px)': {
+            bottom: isPanelOpen ? '140px' : '20px',
+            right: '10px',
+            minWidth: isPanelOpen ? '200px' : '30px',
+            maxWidth: '250px',
+            padding: isPanelOpen ? '8px' : '0'
+          }
+        }}>
+          {/* Toggle Panel Button */}
+          <button 
+            onClick={() => setIsPanelOpen(!isPanelOpen)} 
+            style={{ 
+              position: 'absolute', 
+              top: '10px', 
+              right: '10px', 
+              background: 'none', 
+              border: 'none', 
+              color: '#FFD700', 
+              fontSize: '16px', 
+              cursor: 'pointer', 
+              padding: '5px', 
+              borderRadius: '50%', 
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+          >
+            {isPanelOpen ? '−' : '+'}
+          </button>
+          
+          {isPanelOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Play/Pause Button */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                <button 
+                  onClick={togglePlay} 
+                  style={{ 
+                    background: 'rgba(255, 215, 0, 0.2)', 
+                    border: '1px solid #FFD700', 
+                    color: '#FFD700', 
+                    padding: '10px 20px', 
+                    borderRadius: '25px', 
+                    cursor: 'pointer', 
+                    fontSize: '16px', 
+                    fontWeight: 'bold', 
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.4)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 215, 0, 0.2)'}
+                >
+                  {isPlaying ? '⏸' : '▶'}
+                </button>
+                <div style={{ color: '#FFD700', fontSize: '12px', fontFamily: 'sans-serif' }}>
+                  {Math.floor(currentTime / 60).toString().padStart(2, '0')}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
+                  {' / '}
+                  {Math.floor(duration / 60).toString().padStart(2, '0')}:{Math.floor(duration % 60).toString().padStart(2, '0')}
+                </div>
+              </div>
+              
+              {/* Progress Bar */}
+              <div 
+                style={{ position: 'relative', height: '6px', background: 'rgba(255, 255, 255, 0.2)', borderRadius: '3px', cursor: 'pointer' }}
+                onClick={(e) => {
+                  if (duration > 0) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const percentage = clickX / rect.width;
+                    seek(percentage * duration);
+                  }
+                }}
+              >
+                <div 
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    height: '100%', 
+                    width: duration > 0 ? `${(currentTime / duration) * 100}%` : '0%', 
+                    background: 'linear-gradient(to right, #FFD700, #FFA500)', 
+                    borderRadius: '3px', 
+                    transition: 'width 0.1s ease'
+                  }}
+                />
+                {duration > 0 && (
+                  <div 
+                    style={{ 
+                      position: 'absolute', 
+                      left: `${(currentTime / duration) * 100}%`, 
+                      top: '50%', 
+                      transform: 'translateX(-50%) translateY(-50%)', 
+                      width: '14px', 
+                      height: '14px', 
+                      background: '#FFD700', 
+                      border: '2px solid #000', 
+                      borderRadius: '50%', 
+                      cursor: 'grab'
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const handleMouseMove = (moveEvent: MouseEvent) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const moveX = moveEvent.clientX - rect.left;
+                        const percentage = Math.max(0, Math.min(1, moveX / rect.width));
+                        seek(percentage * duration);
+                      };
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                )}
+              </div>
+              
+              {/* Volume Control */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ color: '#FFD700', fontSize: '16px' }}>🔊</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.01" 
+                  value={volume} 
+                  onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                  style={{ flex: 1, height: '6px', borderRadius: '3px', background: 'rgba(255, 255, 255, 0.2)', outline: 'none', cursor: 'pointer' }}
+                />
+                <span style={{ color: '#FFD700', fontSize: '12px', width: '40px', textAlign: 'right' }}>
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Audio Error Message */}
+      {audioError && (
+        <div style={{ 
+          position: 'absolute', 
+          bottom: '30px', 
+          right: '40px', 
+          zIndex: 10, 
+          background: 'rgba(0, 0, 0, 0.7)', 
+          border: '1px solid rgba(255, 0, 0, 0.5)', 
+          color: '#FF0000', 
+          padding: '10px 15px', 
+          borderRadius: '8px', 
+          fontSize: '12px', 
+          fontFamily: 'sans-serif', 
+          backdropFilter: 'blur(8px)'
+        }}>
+          🎵 音频加载失败
+        </div>
+      )}
     </div>
   );
 }
