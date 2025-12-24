@@ -1,4 +1,188 @@
 import { useState, useMemo, useRef, useEffect, Suspense } from 'react';
+
+// --- Music Player Component ---
+const MusicPlayer = () => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+
+  useEffect(() => {
+    const audio = new Audio('/christmas-music.mp3');
+    audio.loop = true;
+    audio.volume = volume;
+    audioRef.current = audio;
+
+    // Handle audio events
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      setCurrentTime(audio.currentTime);
+    });
+
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+    });
+
+    audio.addEventListener('error', () => {
+      setShowErrorMessage(true);
+    });
+
+    // Attempt to play audio
+    const playAudio = async () => {
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch {
+        // Auto-play failed, user will need to interact with the page
+        setShowErrorMessage(true);
+      }
+    };
+
+    // Play on page load or user interaction
+    playAudio();
+    document.addEventListener('click', () => {
+      if (audioRef.current && !isPlaying) {
+        audioRef.current.play().then(() => setIsPlaying(true));
+      }
+    });
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.remove();
+      }
+    };
+  }, [isPlaying, volume]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(() => setShowErrorMessage(true));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
+    setShowErrorMessage(false);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    setShowErrorMessage(false);
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, maxWidth: '90vw' }}>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsPlayerOpen(!isPlayerOpen)}
+        style={{ padding: '8px 16px', backgroundColor: 'rgba(0,0,0,0.7)', border: '1px solid #FFD700', color: '#FFD700', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)', borderRadius: '4px', marginBottom: '8px', width: '100%' }}
+      >
+        {isPlayerOpen ? '🎵' : '🎵'}
+      </button>
+
+      {/* Player */}
+      {isPlayerOpen && (
+        <div style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255, 215, 0, 0.3)', borderRadius: '12px', padding: '16px', width: '100%', maxWidth: '280px', backdropFilter: 'blur(8px)' }}>
+          {/* Error Message */}
+          {showErrorMessage && (
+            <div style={{ color: '#FF0000', fontSize: '11px', marginBottom: '12px', textAlign: 'center' }}>
+              🎵 圣诞音乐加载失败，请检查网络或点击播放按钮
+            </div>
+          )}
+
+          {/* Progress Bar */}
+          <div style={{ marginBottom: '12px' }}>
+            <input
+              type="range"
+              min="0"
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleTimeChange}
+              style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', outline: 'none', appearance: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.7)', fontSize: '10px', marginTop: '4px' }}>
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Play/Pause */}
+            <button
+              onClick={handlePlayPause}
+              style={{ width: '40px', height: '40px', borderRadius: '50%', background: isPlaying ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: '#FFD700', fontSize: '18px', cursor: 'pointer' }}
+            >
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+
+            {/* Volume */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={toggleMute}
+                style={{ background: 'transparent', border: 'none', color: '#FFD700', fontSize: '16px', cursor: 'pointer' }}
+              >
+                {isMuted ? '🔇' : volume > 0.5 ? '🔊' : '🔉'}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                style={{ flex: 1, height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', outline: 'none', appearance: 'none' }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 import { Canvas, useFrame, extend } from '@react-three/fiber';
 import {
   OrbitControls,
@@ -10,6 +194,7 @@ import {
   Sparkles,
   useTexture
 } from '@react-three/drei';
+
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { MathUtils } from 'three';
@@ -90,7 +275,7 @@ const getTreePosition = () => {
 
 // --- Component: Foliage ---
 const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
-  const materialRef = useRef<any>(null);
+  const materialRef = useRef<THREE.ShaderMaterial & { uTime: number; uProgress: number }>(null);
   const { positions, targetPositions, randoms } = useMemo(() => {
     const count = CONFIG.counts.foliage;
     const positions = new Float32Array(count * 3); const targetPositions = new Float32Array(count * 3); const randoms = new Float32Array(count);
@@ -99,6 +284,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
       positions[i*3] = spherePoints[i*3]; positions[i*3+1] = spherePoints[i*3+1]; positions[i*3+2] = spherePoints[i*3+2];
       const [tx, ty, tz] = getTreePosition();
       targetPositions[i*3] = tx; targetPositions[i*3+1] = ty; targetPositions[i*3+2] = tz;
+      // eslint-disable-next-line react-hooks/purity
       randoms[i] = Math.random();
     }
     return { positions, targetPositions, randoms };
@@ -117,7 +303,7 @@ const Foliage = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         <bufferAttribute attach="attributes-aTargetPos" args={[targetPositions, 3]} />
         <bufferAttribute attach="attributes-aRandom" args={[randoms, 1]} />
       </bufferGeometry>
-      {/* @ts-ignore */}
+      {/* @ts-expect-error - Custom material type not fully typed */}
       <foliageMaterial ref={materialRef} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
     </points>
   );
@@ -134,23 +320,35 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
   const data = useMemo(() => {
     return new Array(count).fill(0).map((_, i) => {
+      // eslint-disable-next-line react-hooks/purity
       const chaosPos = new THREE.Vector3((Math.random()-0.5)*70, (Math.random()-0.5)*70, (Math.random()-0.5)*70);
-      const h = CONFIG.tree.height; const y = (Math.random() * h) - (h / 2);
+      const h = CONFIG.tree.height; 
+      // eslint-disable-next-line react-hooks/purity
+      const y = (Math.random() * h) - (h / 2);
       const rBase = CONFIG.tree.radius;
       const currentRadius = (rBase * (1 - (y + (h/2)) / h)) + 0.5;
+      // eslint-disable-next-line react-hooks/purity
       const theta = Math.random() * Math.PI * 2;
       const targetPos = new THREE.Vector3(currentRadius * Math.cos(theta), y, currentRadius * Math.sin(theta));
 
+      // eslint-disable-next-line react-hooks/purity
       const isBig = Math.random() < 0.2;
+      // eslint-disable-next-line react-hooks/purity
       const baseScale = isBig ? 2.2 : 0.8 + Math.random() * 0.6;
+      // eslint-disable-next-line react-hooks/purity
       const weight = 0.8 + Math.random() * 1.2;
+      // eslint-disable-next-line react-hooks/purity
       const borderColor = CONFIG.colors.borders[Math.floor(Math.random() * CONFIG.colors.borders.length)];
 
       const rotationSpeed = {
+        // eslint-disable-next-line react-hooks/purity
         x: (Math.random() - 0.5) * 1.0,
+        // eslint-disable-next-line react-hooks/purity
         y: (Math.random() - 0.5) * 1.0,
+        // eslint-disable-next-line react-hooks/purity
         z: (Math.random() - 0.5) * 1.0
       };
+      // eslint-disable-next-line react-hooks/purity
       const chaosRotation = new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
 
       return {
@@ -160,7 +358,9 @@ const PhotoOrnaments = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
         currentPos: chaosPos.clone(),
         chaosRotation,
         rotationSpeed,
+        // eslint-disable-next-line react-hooks/purity
         wobbleOffset: Math.random() * 10,
+        // eslint-disable-next-line react-hooks/purity
         wobbleSpeed: 0.5 + Math.random() * 0.5
       };
     });
@@ -244,25 +444,47 @@ const ChristmasElements = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
   const data = useMemo(() => {
     return new Array(count).fill(0).map(() => {
+      // eslint-disable-next-line react-hooks/purity
       const chaosPos = new THREE.Vector3((Math.random()-0.5)*60, (Math.random()-0.5)*60, (Math.random()-0.5)*60);
       const h = CONFIG.tree.height;
+      // eslint-disable-next-line react-hooks/purity
       const y = (Math.random() * h) - (h / 2);
       const rBase = CONFIG.tree.radius;
       const currentRadius = (rBase * (1 - (y + (h/2)) / h)) * 0.95;
+      // eslint-disable-next-line react-hooks/purity
       const theta = Math.random() * Math.PI * 2;
 
       const targetPos = new THREE.Vector3(currentRadius * Math.cos(theta), y, currentRadius * Math.sin(theta));
 
+      // eslint-disable-next-line react-hooks/purity
       const type = Math.floor(Math.random() * 3);
       let color; let scale = 1;
-      if (type === 0) { color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; scale = 0.8 + Math.random() * 0.4; }
-      else if (type === 1) { color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; scale = 0.6 + Math.random() * 0.4; }
-      else { color = Math.random() > 0.5 ? CONFIG.colors.red : CONFIG.colors.white; scale = 0.7 + Math.random() * 0.3; }
+      if (type === 0) { 
+        // eslint-disable-next-line react-hooks/purity
+        color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; 
+        // eslint-disable-next-line react-hooks/purity
+        scale = 0.8 + Math.random() * 0.4; 
+      }
+      else if (type === 1) { 
+        // eslint-disable-next-line react-hooks/purity
+        color = CONFIG.colors.giftColors[Math.floor(Math.random() * CONFIG.colors.giftColors.length)]; 
+        // eslint-disable-next-line react-hooks/purity
+        scale = 0.6 + Math.random() * 0.4; 
+      }
+      else { 
+        // eslint-disable-next-line react-hooks/purity
+        color = Math.random() > 0.5 ? CONFIG.colors.red : CONFIG.colors.white; 
+        // eslint-disable-next-line react-hooks/purity
+        scale = 0.7 + Math.random() * 0.3; 
+      }
 
+      // eslint-disable-next-line react-hooks/purity
       const rotationSpeed = { x: (Math.random()-0.5)*2.0, y: (Math.random()-0.5)*2.0, z: (Math.random()-0.5)*2.0 };
-      return { type, chaosPos, targetPos, color, scale, currentPos: chaosPos.clone(), chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed };
+      return { type, chaosPos, targetPos, color, scale, currentPos: chaosPos.clone(), 
+        // eslint-disable-next-line react-hooks/purity
+        chaosRotation: new THREE.Euler(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI), rotationSpeed };
     });
-  }, [boxGeometry, sphereGeometry, caneGeometry]);
+  }, [count]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -296,15 +518,25 @@ const FairyLights = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
   const data = useMemo(() => {
     return new Array(count).fill(0).map(() => {
+      // eslint-disable-next-line react-hooks/purity
       const chaosPos = new THREE.Vector3((Math.random()-0.5)*60, (Math.random()-0.5)*60, (Math.random()-0.5)*60);
-      const h = CONFIG.tree.height; const y = (Math.random() * h) - (h / 2); const rBase = CONFIG.tree.radius;
-      const currentRadius = (rBase * (1 - (y + (h/2)) / h)) + 0.3; const theta = Math.random() * Math.PI * 2;
+      const h = CONFIG.tree.height; 
+      // eslint-disable-next-line react-hooks/purity
+      const y = (Math.random() * h) - (h / 2); 
+      const rBase = CONFIG.tree.radius;
+      const currentRadius = (rBase * (1 - (y + (h/2)) / h)) + 0.3; 
+      // eslint-disable-next-line react-hooks/purity
+      const theta = Math.random() * Math.PI * 2;
       const targetPos = new THREE.Vector3(currentRadius * Math.cos(theta), y, currentRadius * Math.sin(theta));
+      // eslint-disable-next-line react-hooks/purity
       const color = CONFIG.colors.lights[Math.floor(Math.random() * CONFIG.colors.lights.length)];
+      // eslint-disable-next-line react-hooks/purity
       const speed = 2 + Math.random() * 3;
-      return { chaosPos, targetPos, color, speed, currentPos: chaosPos.clone(), timeOffset: Math.random() * 100 };
+      return { chaosPos, targetPos, color, speed, currentPos: chaosPos.clone(), 
+        // eslint-disable-next-line react-hooks/purity
+        timeOffset: Math.random() * 100 };
     });
-  }, []);
+  }, [count]);
 
   useFrame((stateObj, delta) => {
     if (!groupRef.current) return;
@@ -340,7 +572,11 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
     for (let i = 0; i < points * 2; i++) {
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
       const angle = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
-      i === 0 ? shape.moveTo(radius*Math.cos(angle), radius*Math.sin(angle)) : shape.lineTo(radius*Math.cos(angle), radius*Math.sin(angle));
+      if (i === 0) {
+        shape.moveTo(radius*Math.cos(angle), radius*Math.sin(angle));
+      } else {
+        shape.lineTo(radius*Math.cos(angle), radius*Math.sin(angle));
+      }
     }
     shape.closePath();
     return shape;
@@ -381,18 +617,17 @@ const TopStar = ({ state }: { state: 'CHAOS' | 'FORMED' }) => {
 
 // --- Main Scene Experience ---
 const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORMED', rotationSpeed: number }) => {
-  const controlsRef = useRef<any>(null);
-  useFrame(() => {
-    if (controlsRef.current) {
-      controlsRef.current.setAzimuthalAngle(controlsRef.current.getAzimuthalAngle() + rotationSpeed);
-      controlsRef.current.update();
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  useFrame((_, delta) => {
+    if (cameraRef.current) {
+      cameraRef.current.rotation.y += rotationSpeed * delta;
     }
   });
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[0, 8, 60]} fov={45} />
-      <OrbitControls ref={controlsRef} enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} maxPolarAngle={Math.PI / 1.7} />
+      <PerspectiveCamera ref={cameraRef} makeDefault position={[0, 8, 60]} fov={45} />
+      <OrbitControls enablePan={false} enableZoom={true} minDistance={30} maxDistance={120} autoRotate={rotationSpeed === 0 && sceneState === 'FORMED'} autoRotateSpeed={0.3} maxPolarAngle={Math.PI / 1.7} />
 
       <color attach="background" args={['#000300']} />
       <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
@@ -422,9 +657,8 @@ const Experience = ({ sceneState, rotationSpeed }: { sceneState: 'CHAOS' | 'FORM
   );
 };
 
-// --- Gesture Controller ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const GestureController = ({ onGesture, onMove, onStatus, debugMode }: any) => {
+// --- Gesture Controller --- 
+const GestureController = ({ onGesture, onMove, onStatus, debugMode }: { onGesture: (state: 'CHAOS' | 'FORMED') => void, onMove: (speed: number) => void, onStatus: (status: string) => void, debugMode: boolean }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -456,8 +690,8 @@ const GestureController = ({ onGesture, onMove, onStatus, debugMode }: any) => {
         } else {
             onStatus("ERROR: CAMERA PERMISSION DENIED");
         }
-      } catch (err: any) {
-        onStatus(`ERROR: ${err.message || 'MODEL FAILED'}`);
+      } catch (err: unknown) {
+        onStatus(`ERROR: ${err instanceof Error ? err.message : 'MODEL FAILED'}`);
       }
     };
 
@@ -520,7 +754,7 @@ export default function GrandTreeApp() {
       <GestureController onGesture={setSceneState} onMove={setRotationSpeed} onStatus={setAiStatus} debugMode={debugMode} />
 
       {/* UI - Stats */}
-      <div style={{ position: 'absolute', bottom: '30px', left: '40px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none' }}>
+      <div style={{ position: 'absolute', bottom: '30px', left: '20px', color: '#888', zIndex: 10, fontFamily: 'sans-serif', userSelect: 'none', maxWidth: '45vw' }}>
         <div style={{ marginBottom: '15px' }}>
           <p style={{ fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '4px' }}>Memories</p>
           <p style={{ fontSize: '24px', color: '#FFD700', fontWeight: 'bold', margin: 0 }}>
@@ -536,19 +770,22 @@ export default function GrandTreeApp() {
       </div>
 
       {/* UI - Buttons */}
-      <div style={{ position: 'absolute', bottom: '30px', right: '40px', zIndex: 10, display: 'flex', gap: '10px' }}>
-        <button onClick={() => setDebugMode(!debugMode)} style={{ padding: '12px 15px', backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: debugMode ? '#000' : '#FFD700', fontFamily: 'sans-serif', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+      <div style={{ position: 'absolute', bottom: '30px', right: '20px', zIndex: 10, display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <button onClick={() => setDebugMode(!debugMode)} style={{ padding: '12px 15px', backgroundColor: debugMode ? '#FFD700' : 'rgba(0,0,0,0.5)', border: '1px solid #FFD700', color: debugMode ? '#000' : '#FFD700', fontFamily: 'sans-serif', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', backdropFilter: 'blur(4px)', minWidth: '80px' }}>
            {debugMode ? 'HIDE DEBUG' : '🛠 DEBUG'}
         </button>
-        <button onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} style={{ padding: '12px 30px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255, 215, 0, 0.5)', color: '#FFD700', fontFamily: 'serif', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', backdropFilter: 'blur(4px)' }}>
+        <button onClick={() => setSceneState(s => s === 'CHAOS' ? 'FORMED' : 'CHAOS')} style={{ padding: '12px 30px', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255, 215, 0, 0.5)', color: '#FFD700', fontFamily: 'serif', fontSize: '14px', fontWeight: 'bold', letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', backdropFilter: 'blur(4px)', minWidth: '120px' }}>
            {sceneState === 'CHAOS' ? 'Assemble Tree' : 'Disperse'}
         </button>
       </div>
 
       {/* UI - AI Status */}
-      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px' }}>
+      <div style={{ position: 'absolute', top: '20px', left: '50%', transform: 'translateX(-50%)', color: aiStatus.includes('ERROR') ? '#FF0000' : 'rgba(255, 215, 0, 0.4)', fontSize: '10px', letterSpacing: '2px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90vw' }}>
         {aiStatus}
       </div>
+
+      {/* Music Player */}
+      <MusicPlayer />
     </div>
   );
 }
